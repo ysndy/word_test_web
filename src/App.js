@@ -25,13 +25,13 @@ export default function App() {
   const [secondsLeft, setSecondsLeft] = useState(5);
   const inputRef = useRef(null);
 
-  const nextWord = useCallback((answered) => {
-    const correct = wordList[index].ko === input.trim();
+  const nextWord = useCallback((answered, userInput) => {
+    const correct = wordList[index].ko === userInput.trim();
     setResults((prev) => [...prev, answered && correct]);
     if (answered && correct) setScore((prev) => prev + 1);
     setInput("");
     setIndex((prev) => prev + 1);
-  }, [index, input]);
+  }, [index]);
 
   useEffect(() => {
     if (index >= wordList.length) return;
@@ -40,7 +40,7 @@ export default function App() {
       setSecondsLeft((s) => s - 1);
     }, 1000);
     const timeout = setTimeout(() => {
-      nextWord(false);
+      nextWord(false, input); // 여기에 input 넘김
     }, 5000);
 
     inputRef.current?.focus();
@@ -49,12 +49,13 @@ export default function App() {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index, nextWord]); // ✅ 여기에 nextWord 포함
+  }, [index, nextWord]); // 🔥 input은 제거됨
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    nextWord(true);
+    nextWord(true, input); // 🔥 여기도 input 직접 넘김
   };
+
 
   if (index >= wordList.length) {
     return (
