@@ -1,4 +1,4 @@
-// app.jsx
+// App.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,7 +23,14 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [results, setResults] = useState([]);
   const [secondsLeft, setSecondsLeft] = useState(5);
+
   const inputRef = useRef(null);
+  const inputValueRef = useRef(""); // 🔧 입력값을 참조하기 위한 ref
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    inputValueRef.current = e.target.value;
+  };
 
   const nextWord = useCallback((answered, userInput) => {
     const correct = wordList[index].ko === userInput.trim();
@@ -36,11 +43,13 @@ export default function App() {
   useEffect(() => {
     if (index >= wordList.length) return;
     setSecondsLeft(5);
+
     const countdown = setInterval(() => {
       setSecondsLeft((s) => s - 1);
     }, 1000);
+
     const timeout = setTimeout(() => {
-      nextWord(false, input); // 여기에 input 넘김
+      nextWord(false, inputValueRef.current); // 🔧 현재 입력값으로 처리
     }, 5000);
 
     inputRef.current?.focus();
@@ -49,13 +58,12 @@ export default function App() {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index, nextWord]); // 🔥 input은 제거됨
+  }, [index, nextWord]); // ❗ input 빠짐
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    nextWord(true, input); // 🔥 여기도 input 직접 넘김
+    nextWord(true, inputValueRef.current);
   };
-
 
   if (index >= wordList.length) {
     return (
@@ -101,7 +109,7 @@ export default function App() {
               type="text"
               className="border p-2 text-lg"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
           />
           <button className="ml-2 px-4 py-2 bg-blue-500 text-white rounded" type="submit">
             확인
