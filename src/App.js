@@ -21,11 +21,11 @@ export default function App() {
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
   const [score, setScore] = useState(0);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState([]); // [{correct: boolean, answer: string}]
   const [secondsLeft, setSecondsLeft] = useState(5);
 
   const inputRef = useRef(null);
-  const inputValueRef = useRef(""); // 🔧 입력값을 참조하기 위한 ref
+  const inputValueRef = useRef("");
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
@@ -34,7 +34,7 @@ export default function App() {
 
   const nextWord = useCallback((answered, userInput) => {
     const correct = wordList[index].ko === userInput.trim();
-    setResults((prev) => [...prev, answered && correct]);
+    setResults((prev) => [...prev, { correct, answer: userInput.trim() }]);
     if (answered && correct) setScore((prev) => prev + 1);
     setInput("");
     setIndex((prev) => prev + 1);
@@ -49,7 +49,7 @@ export default function App() {
     }, 1000);
 
     const timeout = setTimeout(() => {
-      nextWord(false, inputValueRef.current); // 🔧 현재 입력값으로 처리
+      nextWord(false, inputValueRef.current);
     }, 5000);
 
     inputRef.current?.focus();
@@ -58,11 +58,38 @@ export default function App() {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index, nextWord]); // ❗ input 빠짐
+  }, [index, nextWord]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     nextWord(true, inputValueRef.current);
+  };
+
+  const handleShare = async () => {
+    const summary = results.map((r, i) => {
+      const word = wordList[i];
+      return `${word.en} - 정답: ${word.ko}, 내 답: ${r.answer || "(미입력)"} → ${r.correct ? "정답" : "오답"}`;
+    }).join("\n");
+
+    const text = `퀴즈 결과 (${score} / ${wordList.length})\n\n${summary}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "영어 단어 퀴즈 결과",
+          text,
+        });
+      } catch (err) {
+        alert("공유에 실패했습니다: " + err.message);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        alert("공유를 지원하지 않는 브라우저입니다. 결과가 클립보드에 복사되었습니다.");
+      } catch (err) {
+        alert("복사 실패: " + err.message);
+      }
+    }
   };
 
   if (index >= wordList.length) {
@@ -70,13 +97,21 @@ export default function App() {
         <div className="text-center p-10">
           <h1 className="text-2xl font-bold">퀴즈 종료!</h1>
           <p className="text-lg">정답 개수: {score} / {wordList.length}</p>
-          <ul className="mt-4">
+          <ul className="mt-4 space-y-2">
             {wordList.map((w, i) => (
-                <li key={i} className={results[i] ? "text-green-600" : "text-red-600"}>
-                  {w.en} - {w.ko} ({results[i] ? "정답" : "오답"})
+                <li key={i} className={results[i]?.correct ? "text-green-600" : "text-red-600"}>
+                  <div><strong>{w.en}</strong> - 정답: {w.ko}</div>
+                  <div>내 답: {results[i]?.answer || "(미입력)"}</div>
+                  <div>{results[i]?.correct ? "✅ 정답" : "❌ 오답"}</div>
                 </li>
             ))}
           </ul>
+          <button
+              onClick={handleShare}
+              className="mt-6 px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            📤 결과 공유하기
+          </button>
         </div>
     );
   }
