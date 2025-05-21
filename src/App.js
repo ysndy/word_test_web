@@ -25,6 +25,14 @@ export default function App() {
   const [secondsLeft, setSecondsLeft] = useState(5);
   const inputRef = useRef(null);
 
+  const nextWord = useCallback((answered) => {
+    const correct = wordList[index].ko === input.trim();
+    setResults((prev) => [...prev, answered && correct]);
+    if (answered && correct) setScore((prev) => prev + 1);
+    setInput("");
+    setIndex((prev) => prev + 1);
+  }, [index, input]);
+
   useEffect(() => {
     if (index >= wordList.length) return;
     setSecondsLeft(5);
@@ -41,15 +49,8 @@ export default function App() {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index]);
+  }, [index, nextWord]); // ✅ 여기에 nextWord 포함
 
-  const nextWord = useCallback((answered) => {
-    const correct = wordList[index].ko === input.trim();
-    setResults((prev) => [...prev, answered && correct]);
-    if (answered && correct) setScore((prev) => prev + 1);
-    setInput("");
-    setIndex((prev) => prev + 1);
-  }, [index, input]);
   const handleSubmit = (e) => {
     e.preventDefault();
     nextWord(true);
