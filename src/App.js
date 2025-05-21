@@ -1,5 +1,5 @@
 // app.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const wordList = [
@@ -43,14 +43,13 @@ export default function App() {
     };
   }, [index]);
 
-  const nextWord = (answered) => {
+  const nextWord = useCallback((answered) => {
     const correct = wordList[index].ko === input.trim();
     setResults((prev) => [...prev, answered && correct]);
     if (answered && correct) setScore((prev) => prev + 1);
     setInput("");
     setIndex((prev) => prev + 1);
-  };
-
+  }, [index, input]);
   const handleSubmit = (e) => {
     e.preventDefault();
     nextWord(true);
