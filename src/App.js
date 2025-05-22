@@ -1,31 +1,33 @@
 // App.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import html2canvas from "html2canvas";
 
 const wordList = [
-  { en: "apple", ko: "사과" },
-  { en: "book", ko: "책" },
-  { en: "computer", ko: "컴퓨터" },
-  { en: "dog", ko: "개" },
-  { en: "elephant", ko: "코끼리" },
-  { en: "fish", ko: "물고기" },
-  { en: "grape", ko: "포도" },
-  { en: "hat", ko: "모자" },
-  { en: "ice", ko: "얼음" },
-  { en: "juice", ko: "주스" },
-  { en: "key", ko: "열쇠" },
-  { en: "lamp", ko: "램프" },
+  { en: "advise", ko: "충고하다" },
+  { en: "improve", ko: "향상시키다" },
+  { en: "social", ko: "사회의" },
+  { en: "contain", ko: "함유하다" },
+  { en: "amaze", ko: "놀라게 하다" },
+  { en: "cell", ko: "세포" },
+  { en: "complex", ko: "복잡한" },
+  { en: "secure", ko: "안전한" },
+  { en: "negative", ko: "부정적인" },
+  { en: "biology", ko: "생물학" },
+  { en: "reflect", ko: "반영하다" },
+  { en: "species", ko: "종" },
 ];
 
 export default function App() {
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
   const [score, setScore] = useState(0);
-  const [results, setResults] = useState([]); // [{correct: boolean, answer: string}]
+  const [results, setResults] = useState([]);
   const [secondsLeft, setSecondsLeft] = useState(5);
 
   const inputRef = useRef(null);
   const inputValueRef = useRef("");
+  const resultRef = useRef(null);
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
@@ -65,6 +67,17 @@ export default function App() {
     nextWord(true, inputValueRef.current);
   };
 
+  const handleDownloadImage = async () => {
+    if (!resultRef.current) return;
+    const canvas = await html2canvas(resultRef.current);
+    const dataUrl = canvas.toDataURL("image/png");
+
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = "quiz_result.png";
+    link.click();
+  };
+
   const handleShare = async () => {
     const summary = results.map((r, i) => {
       const word = wordList[i];
@@ -83,35 +96,34 @@ export default function App() {
         alert("공유에 실패했습니다: " + err.message);
       }
     } else {
-      try {
-        await navigator.clipboard.writeText(text);
-        alert("공유를 지원하지 않는 브라우저입니다. 결과가 클립보드에 복사되었습니다.");
-      } catch (err) {
-        alert("복사 실패: " + err.message);
-      }
+      await handleDownloadImage();
     }
   };
 
   if (index >= wordList.length) {
     return (
         <div className="text-center p-10">
-          <h1 className="text-2xl font-bold">퀴즈 종료!</h1>
-          <p className="text-lg">정답 개수: {score} / {wordList.length}</p>
-          <ul className="mt-4 space-y-2">
-            {wordList.map((w, i) => (
-                <li key={i} className={results[i]?.correct ? "text-green-600" : "text-red-600"}>
-                  <div><strong>{w.en}</strong> - 정답: {w.ko}</div>
-                  <div>내 답: {results[i]?.answer || "(미입력)"}</div>
-                  <div>{results[i]?.correct ? "✅ 정답" : "❌ 오답"}</div>
-                </li>
-            ))}
-          </ul>
-          <button
-              onClick={handleShare}
-              className="mt-6 px-4 py-2 bg-blue-600 text-white rounded"
-          >
-            📤 결과 공유하기
-          </button>
+          <div ref={resultRef}>
+            <h1 className="text-2xl font-bold">퀴즈 종료!</h1>
+            <p className="text-lg">정답 개수: {score} / {wordList.length}</p>
+            <ul className="mt-4 space-y-2">
+              {wordList.map((w, i) => (
+                  <li key={i} className={results[i]?.correct ? "text-green-600" : "text-red-600"}>
+                    <div><strong>{w.en}</strong> - 정답: {w.ko}</div>
+                    <div>내 답: {results[i]?.answer || "(미입력)"}</div>
+                    <div>{results[i]?.correct ? "✅ 정답" : "❌ 오답"}</div>
+                  </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex justify-center mt-6">
+            <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              📤 결과 공유 또는 이미지 저장
+            </button>
+          </div>
         </div>
     );
   }
