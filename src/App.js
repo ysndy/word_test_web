@@ -32,7 +32,7 @@ export default function App() {
         .catch((err) => {
           console.error("퀴즈 데이터를 불러오는 중 오류:", err);
         });
-  }, []);
+  }, [baseUrl]);
 
   const nextWord = useCallback((answered, userInput) => {
     const correct = wordList[index].ko === userInput.trim();
