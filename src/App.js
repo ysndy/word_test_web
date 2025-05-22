@@ -20,10 +20,10 @@ export default function App() {
   // ✅ 퀴즈 데이터 fetch
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const quizId = params.get("quiz_id");
+    const quizId = params.get("quiz");
     if (!quizId) return;
 
-    fetch(`${baseUrl}/api/quiz?quiz_id=${quizId}`)
+    fetch(`${baseUrl}/api/quiz?quiz=${quizId}`)
         .then((res) => res.json())
         .then((data) => {
           setWordList(data.questions); // [{ en, ko }]
