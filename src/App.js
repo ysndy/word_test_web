@@ -3,22 +3,9 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import html2canvas from "html2canvas";
 
-const wordList = [
-  { en: "advise", ko: "충고하다" },
-  { en: "improve", ko: "향상시키다" },
-  { en: "social", ko: "사회의" },
-  { en: "contain", ko: "함유하다" },
-  { en: "amaze", ko: "놀라게 하다" },
-  { en: "cell", ko: "세포" },
-  { en: "complex", ko: "복잡한" },
-  { en: "secure", ko: "안전한" },
-  { en: "negative", ko: "부정적인" },
-  { en: "biology", ko: "생물학" },
-  { en: "reflect", ko: "반영하다" },
-  { en: "species", ko: "종" },
-];
-
 export default function App() {
+  const [wordList, setWordList] = useState([]);
+  const [quizLoaded, setQuizLoaded] = useState(false); // 로딩 상태
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
   const [score, setScore] = useState(0);
@@ -28,11 +15,24 @@ export default function App() {
   const inputRef = useRef(null);
   const inputValueRef = useRef("");
   const resultRef = useRef(null);
+  const baseUrl = process.env.REACT_APP_API_BASE_URL;
 
-  const handleInputChange = (e) => {
-    setInput(e.target.value);
-    inputValueRef.current = e.target.value;
-  };
+  // ✅ 퀴즈 데이터 fetch
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const quizId = params.get("quiz_id");
+    if (!quizId) return;
+
+    fetch(`${baseUrl}/api/quiz?quiz_id=${quizId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setWordList(data.questions); // [{ en, ko }]
+          setQuizLoaded(true);
+        })
+        .catch((err) => {
+          console.error("퀴즈 데이터를 불러오는 중 오류:", err);
+        });
+  }, []);
 
   const nextWord = useCallback((answered, userInput) => {
     const correct = wordList[index].ko === userInput.trim();
@@ -40,27 +40,28 @@ export default function App() {
     if (answered && correct) setScore((prev) => prev + 1);
     setInput("");
     setIndex((prev) => prev + 1);
-  }, [index]);
+  }, [index, wordList]);
 
   useEffect(() => {
-    if (index >= wordList.length) return;
+    if (!quizLoaded || index >= wordList.length) return;
+
     setSecondsLeft(5);
-
-    const countdown = setInterval(() => {
-      setSecondsLeft((s) => s - 1);
-    }, 1000);
-
+    const countdown = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     const timeout = setTimeout(() => {
       nextWord(false, inputValueRef.current);
     }, 5000);
 
     inputRef.current?.focus();
-
     return () => {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index, nextWord]);
+  }, [index, nextWord, quizLoaded]);
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    inputValueRef.current = e.target.value;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -71,7 +72,6 @@ export default function App() {
     if (!resultRef.current) return;
     const canvas = await html2canvas(resultRef.current);
     const dataUrl = canvas.toDataURL("image/png");
-
     const link = document.createElement("a");
     link.href = dataUrl;
     link.download = "quiz_result.png";
@@ -88,10 +88,7 @@ export default function App() {
 
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: "영어 단어 퀴즈 결과",
-          text,
-        });
+        await navigator.share({ title: "영어 단어 퀴즈 결과", text });
       } catch (err) {
         alert("공유에 실패했습니다: " + err.message);
       }
@@ -99,6 +96,11 @@ export default function App() {
       await handleDownloadImage();
     }
   };
+
+  // ✅ 로딩 중 처리
+  if (!quizLoaded) {
+    return <div className="text-center p-10 text-lg">퀴즈 데이터를 불러오는 중입니다...</div>;
+  }
 
   if (index >= wordList.length) {
     return (
