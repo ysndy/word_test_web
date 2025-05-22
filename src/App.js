@@ -56,7 +56,7 @@ export default function App() {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index, nextWord, quizLoaded]);
+  }, [index, nextWord, quizLoaded, wordList.length]);
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
