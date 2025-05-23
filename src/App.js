@@ -12,6 +12,7 @@ export default function App() {
   const [results, setResults] = useState([]);
   const [secondsLeft, setSecondsLeft] = useState(5);
   const [timeLimit, setTimeLimit] = useState(5); // 기본값 5초
+  const [quizTitle, setQuizTitle] = useState("퀴즈 맞히기");
 
   const inputRef = useRef(null);
   const inputValueRef = useRef("");
@@ -29,6 +30,7 @@ export default function App() {
         .then((data) => {
           setWordList(data.questions); // [{ en, ko }]
           setTimeLimit(data.timeLimitInSeconds || 5); // fallback: 5초
+          setQuizTitle(data.title || "퀴즈 맞히기");
           setQuizLoaded(true);
         }).catch((err) => {
           console.error("퀴즈 데이터를 불러오는 중 오류:", err);
@@ -133,7 +135,7 @@ export default function App() {
 
   return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <h1 className="text-xl font-bold mb-2">영어 단어 뜻 맞히기</h1>
+        <h1 className="text-xl font-bold mb-2">{quizTitle}</h1>
         <p className="text-sm text-gray-500 mb-4">
           남은 문제: {wordList.length - index} | 남은 시간: {secondsLeft}s
         </p>
