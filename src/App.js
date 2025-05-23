@@ -11,6 +11,7 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [results, setResults] = useState([]);
   const [secondsLeft, setSecondsLeft] = useState(5);
+  const [timeLimit, setTimeLimit] = useState(5); // 기본값 5초
 
   const inputRef = useRef(null);
   const inputValueRef = useRef("");
@@ -27,9 +28,9 @@ export default function App() {
         .then((res) => res.json())
         .then((data) => {
           setWordList(data.questions); // [{ en, ko }]
+          setTimeLimit(data.timeLimitInSeconds || 5); // fallback: 5초
           setQuizLoaded(true);
-        })
-        .catch((err) => {
+        }).catch((err) => {
           console.error("퀴즈 데이터를 불러오는 중 오류:", err);
         });
   }, [baseUrl]);
@@ -45,18 +46,18 @@ export default function App() {
   useEffect(() => {
     if (!quizLoaded || index >= wordList.length) return;
 
-    setSecondsLeft(5);
+    setSecondsLeft(timeLimit);
     const countdown = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     const timeout = setTimeout(() => {
       nextWord(false, inputValueRef.current);
-    }, 5000);
+    }, timeLimit * 1000);
 
     inputRef.current?.focus();
     return () => {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index, nextWord, quizLoaded, wordList.length]);
+  }, [index, nextWord, quizLoaded, wordList.length, timeLimit]);
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
