@@ -1,36 +1,41 @@
 // App.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const wordList = [
-  { en: "apple", ko: "사과" },
-  { en: "book", ko: "책" },
-  { en: "computer", ko: "컴퓨터" },
-  { en: "dog", ko: "개" },
-  { en: "elephant", ko: "코끼리" },
-  { en: "fish", ko: "물고기" },
-  { en: "grape", ko: "포도" },
-  { en: "hat", ko: "모자" },
-  { en: "ice", ko: "얼음" },
-  { en: "juice", ko: "주스" },
-  { en: "key", ko: "열쇠" },
-  { en: "lamp", ko: "램프" },
-];
+import html2canvas from "html2canvas";
 
 export default function App() {
+  const [wordList, setWordList] = useState([]);
+  const [quizLoaded, setQuizLoaded] = useState(false); // 로딩 상태
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
   const [score, setScore] = useState(0);
-  const [results, setResults] = useState([]); // [{correct: boolean, answer: string}]
+  const [results, setResults] = useState([]);
   const [secondsLeft, setSecondsLeft] = useState(5);
+  const [timeLimit, setTimeLimit] = useState(5); // 기본값 5초
+  const [quizTitle, setQuizTitle] = useState("퀴즈 맞히기");
 
   const inputRef = useRef(null);
   const inputValueRef = useRef("");
+  const resultRef = useRef(null);
+  const baseUrl = process.env.REACT_APP_API_BASE_URL;
 
-  const handleInputChange = (e) => {
-    setInput(e.target.value);
-    inputValueRef.current = e.target.value;
-  };
+  // ✅ 퀴즈 데이터 fetch
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const quizId = params.get("quiz");
+    if (!quizId) return;
+
+    fetch(`${baseUrl}/api/quiz?quiz=${quizId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setWordList(data.questions); // [{ en, ko }]
+          setTimeLimit(data.timeLimitInSeconds || 5); // fallback: 5초
+          setQuizTitle(data.title || "퀴즈 맞히기");
+          setQuizLoaded(true);
+        }).catch((err) => {
+          console.error("퀴즈 데이터를 불러오는 중 오류:", err);
+        });
+  }, [baseUrl]);
 
   const nextWord = useCallback((answered, userInput) => {
     const correct = wordList[index].ko === userInput.trim();
@@ -38,31 +43,42 @@ export default function App() {
     if (answered && correct) setScore((prev) => prev + 1);
     setInput("");
     setIndex((prev) => prev + 1);
-  }, [index]);
+  }, [index, wordList]);
 
   useEffect(() => {
-    if (index >= wordList.length) return;
-    setSecondsLeft(5);
+    if (!quizLoaded || index >= wordList.length) return;
 
-    const countdown = setInterval(() => {
-      setSecondsLeft((s) => s - 1);
-    }, 1000);
-
+    setSecondsLeft(timeLimit);
+    const countdown = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     const timeout = setTimeout(() => {
       nextWord(false, inputValueRef.current);
-    }, 5000);
+    }, timeLimit * 1000);
 
     inputRef.current?.focus();
-
     return () => {
       clearTimeout(timeout);
       clearInterval(countdown);
     };
-  }, [index, nextWord]);
+  }, [index, nextWord, quizLoaded, wordList.length, timeLimit]);
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    inputValueRef.current = e.target.value;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     nextWord(true, inputValueRef.current);
+  };
+
+  const handleDownloadImage = async () => {
+    if (!resultRef.current) return;
+    const canvas = await html2canvas(resultRef.current);
+    const dataUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = "quiz_result.png";
+    link.click();
   };
 
   const handleShare = async () => {
@@ -75,50 +91,51 @@ export default function App() {
 
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: "영어 단어 퀴즈 결과",
-          text,
-        });
+        await navigator.share({ title: "영어 단어 퀴즈 결과", text });
       } catch (err) {
         alert("공유에 실패했습니다: " + err.message);
       }
     } else {
-      try {
-        await navigator.clipboard.writeText(text);
-        alert("공유를 지원하지 않는 브라우저입니다. 결과가 클립보드에 복사되었습니다.");
-      } catch (err) {
-        alert("복사 실패: " + err.message);
-      }
+      await handleDownloadImage();
     }
   };
+
+  // ✅ 로딩 중 처리
+  if (!quizLoaded) {
+    return <div className="text-center p-10 text-lg">퀴즈 데이터를 불러오는 중입니다...</div>;
+  }
 
   if (index >= wordList.length) {
     return (
         <div className="text-center p-10">
-          <h1 className="text-2xl font-bold">퀴즈 종료!</h1>
-          <p className="text-lg">정답 개수: {score} / {wordList.length}</p>
-          <ul className="mt-4 space-y-2">
-            {wordList.map((w, i) => (
-                <li key={i} className={results[i]?.correct ? "text-green-600" : "text-red-600"}>
-                  <div><strong>{w.en}</strong> - 정답: {w.ko}</div>
-                  <div>내 답: {results[i]?.answer || "(미입력)"}</div>
-                  <div>{results[i]?.correct ? "✅ 정답" : "❌ 오답"}</div>
-                </li>
-            ))}
-          </ul>
-          <button
-              onClick={handleShare}
-              className="mt-6 px-4 py-2 bg-blue-600 text-white rounded"
-          >
-            📤 결과 공유하기
-          </button>
+          <div ref={resultRef}>
+            <h1 className="text-2xl font-bold">퀴즈 종료!</h1>
+            <p className="text-lg">정답 개수: {score} / {wordList.length}</p>
+            <ul className="mt-4 space-y-2">
+              {wordList.map((w, i) => (
+                  <li key={i} className={results[i]?.correct ? "text-green-600" : "text-red-600"}>
+                    <div><strong>{w.en}</strong> - 정답: {w.ko}</div>
+                    <div>내 답: {results[i]?.answer || "(미입력)"}</div>
+                    <div>{results[i]?.correct ? "✅ 정답" : "❌ 오답"}</div>
+                  </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex justify-center mt-6">
+            <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              📤 결과 공유 또는 이미지 저장
+            </button>
+          </div>
         </div>
     );
   }
 
   return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <h1 className="text-xl font-bold mb-2">영어 단어 뜻 맞히기</h1>
+        <h1 className="text-xl font-bold mb-2">{quizTitle}</h1>
         <p className="text-sm text-gray-500 mb-4">
           남은 문제: {wordList.length - index} | 남은 시간: {secondsLeft}s
         </p>
